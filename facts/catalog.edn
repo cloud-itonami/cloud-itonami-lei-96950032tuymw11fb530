@@ -1,0 +1,379 @@
+;; Verified public-register citations for the legal entity archived by this repository.
+;;
+;; Every row is checked live by tools/verify_citations.cljs:
+;;   * GET :cite/url must answer HTTP 2xx
+;;   * :cite/expect-substring must appear in the response body
+;;
+;; A URL that cannot be fetched, or whose body no longer carries the claim, is a
+;; DRIFT and fails the gate. Nothing is recorded here that was not retrieved
+;; (all rows were fetched and byte-matched on 2026-08-22).
+;;
+;; FOUR independent authorities are cited, not one:
+;;   * GLEIF, the global LEI system
+;;   * the French state, via recherche-entreprises.api.gouv.fr -- the
+;;     government's own company-search API over INSEE Sirene and INPI RNE data
+;;     (the response carries date_mise_a_jour_insee and date_mise_a_jour_rne
+;;     side by side)
+;;   * Euronext, the listing venue, at its own product page for the ALSTOM
+;;     ordinary share (ISIN FR0010220475, market XPAR)
+;;   * the issuer itself, at its own published website www.alstom.com -- the
+;;     legal-notice page this repository archives (80-data/public/tos.journal.edn
+;;     archives https://www.alstom.com/legal-notice, the same URL the issuer-*
+;;     rows cite)
+;;
+;; WHY NO COMMERCIAL-COURT REGISTER (RCS / INPI) IS CITED DIRECTLY. GLEIF names
+;; RA000189 -- Sirene, operated by INSEE, the National Institute of Statistics
+;; and Economic Studies -- as BOTH the register of record and the validation
+;; authority for this entity (rows gleif-registered-at, gleif-validated-as),
+;; and the registeredAs 389058447 is the SIREN. The per-entity pages of the two
+;; company-register frontends answer 403 to this gate (see :catalog/unreachable,
+;; both measured 2026-08-22). What the catalog does instead is corroborate the
+;; SIREN through authorities that do answer on stable URLs: GLEIF prints
+;; 389058447 three times (registeredAs, validatedAs, and inside the
+;; OpenCorporates id fr\/389058447 -- rows gleif-registered-as,
+;; gleif-validated-as, gleif-ocid), and the state's own API prints the same
+;; SIREN with the same registered address and the same creation date (rows
+;; fr-siren, fr-siege-addr, fr-created). GLEIF and the Euronext page never
+;; consulted each other; the issuer's site is a fourth, self-reported voice.
+;;
+;; FIVE HONEST WRINKLES, SO A READER DOES NOT MISREAD THEM AS DRIFT:
+;;   1. The registered legal name is "ALSTOM" alone -- GLEIF records it in
+;;      French (row gleif-legal-name) and INSEE prints nom_complet ALSTOM
+;;      (row fr-name). The "SA" in this repo's README ("Alstom SA") is the
+;;      legal FORM, not part of the name: GLEIF's ELF code K65D and INSEE's
+;;      nature_juridique 5599 both resolve to the same local label,
+;;      "SA a conseil d'administration (s.a.i.)" (rows gleif-legal-form,
+;;      gleif-elf-name, fr-legal-form). Two coding systems, one label,
+;;      reached independently.
+;;   2. GLEIF's creationDate "1992-10-28T23:00:00Z" (row gleif-creation-date)
+;;      and INSEE's date_creation "1992-10-29" (row fr-created) are the SAME
+;;      instant -- UTC rendering of Paris midnight. Not a disagreement.
+;;   3. The issuer's legal-notice page names ALSTOM Holdings -- RCS Bobigny
+;;      347 951 238 -- as the portal's owner (rows issuer-portal-owner,
+;;      issuer-holdings-rcs). That is a DIFFERENT legal entity from the listed
+;;      ALSTOM (SIREN 389058447) archived by this repository; the two share
+;;      the registered address 48 rue Albert Dhalenne (rows issuer-address,
+;;      gleif-legal-address, fr-siege-addr). No issuer-* row claims the portal
+;;      owner is this LEI's entity -- each cites exactly what the page prints.
+;;   4. The head-office establishment (SIRET 38905844700050, row
+;;      fr-siege-siret) carries its own establishment-level date_creation
+;;      2015-11-04 in the same response body. That is the date of the
+;;      establishment, not of the company (1992-10-29). Do not misread one
+;;      for the other.
+;;   5. News headlines on the Euronext product page churn daily; the
+;;      euronext-* rows cite only the instrument's identity (ISIN, instrument
+;;      name, market name), never a headline, price, or volume.
+;;
+;; ROWS THAT WERE DELIBERATELY NOT RECORDED. nextRenewalDate and lastUpdateDate
+;; (GLEIF) drift by design on every annual renewal; the state API's "finances"
+;; block and Euronext's price/volume figures drift on their own schedules. A
+;; catalog row that is expected to change is not a citation -- it is a
+;; scheduled false alarm.
+
+{:catalog/subject
+ #:company{:legal-name "ALSTOM"
+           :lei "96950032TUYMW11FB530"
+           :jurisdiction "FR"
+           :registered-at "RA000189"
+           :registered-as "389058447"
+           :legal-form "K65D"
+           :website "https://www.alstom.com"}
+ :catalog/authorities
+ [{:authority/id :gleif
+   :authority/name "Global Legal Entity Identifier Foundation"
+   :authority/root "https://api.gleif.org/"}
+  {:authority/id :fr-state
+   :authority/name "Republique Francaise, recherche-entreprises.api.gouv.fr (INSEE Sirene + INPI RNE)"
+   :authority/root "https://recherche-entreprises.api.gouv.fr/"}
+  {:authority/id :euronext
+   :authority/name "Euronext, at its live product page for the ALSTOM share"
+   :authority/root "https://live.euronext.com/"}
+  {:authority/id :issuer
+   :authority/name "ALSTOM, at its own published website"
+   :authority/root "https://www.alstom.com/"}]
+ :catalog/unreachable
+ [{:unreachable/authority "INPI, Registre National des Entreprises (data.inpi.fr)"
+   :unreachable/url "https://data.inpi.fr/entreprises/389058447"
+   :unreachable/observed "HTTP 403 without authentication (measured 2026-08-22)"
+   :unreachable/consequence "The RNE view of this entity is not cited directly. The same state data reaches this catalog through recherche-entreprises.api.gouv.fr, whose response carries date_mise_a_jour_rne -- the RNE feed is inside the cited body."}
+  {:unreachable/authority "Infogreffe (commercial-court registry frontend)"
+   :unreachable/url "https://www.infogreffe.fr/entreprise/389058447"
+   :unreachable/observed "HTTP 403 to this gate's User-Agent lei-record-maturity-gate/1.0 (measured 2026-08-22)"
+   :unreachable/consequence "No K-bis-derived row exists below. The SIREN rests on GLEIF (rows gleif-registered-as, gleif-validated-as, gleif-ocid) plus the state API's independent print of the same number (row fr-siren)."}]
+ :catalog/entries
+ [;; ── GLEIF: the LEI record itself ─────────────────────────────────────────
+  {:cite/id "gleif-lei"
+   :cite/authority :gleif
+   :cite/row-kind :identity
+   :cite/url "https://api.gleif.org/api/v1/lei-records/96950032TUYMW11FB530"
+   :cite/expect-substring "\"lei\":\"96950032TUYMW11FB530\""
+   :cite/claim "GLEIF issues LEI 96950032TUYMW11FB530."}
+  {:cite/id "gleif-legal-name"
+   :cite/authority :gleif
+   :cite/row-kind :identity
+   :cite/url "https://api.gleif.org/api/v1/lei-records/96950032TUYMW11FB530"
+   :cite/expect-substring "\"legalName\":{\"name\":\"ALSTOM\",\"language\":\"fr\"}"
+   :cite/claim "The legal name on that LEI is ALSTOM, recorded in French -- the name alone, no SA suffix (see header wrinkle 1). Corroborated independently by fr-name."}
+  {:cite/id "gleif-status"
+   :cite/authority :gleif
+   :cite/row-kind :status
+   :cite/url "https://api.gleif.org/api/v1/lei-records/96950032TUYMW11FB530"
+   :cite/expect-substring "\"status\":\"ACTIVE\""
+   :cite/claim "The entity status is ACTIVE. Corroborated independently by fr-active (INSEE etat_administratif A)."}
+  {:cite/id "gleif-jurisdiction"
+   :cite/authority :gleif
+   :cite/row-kind :identity
+   :cite/url "https://api.gleif.org/api/v1/lei-records/96950032TUYMW11FB530"
+   :cite/expect-substring "\"jurisdiction\":\"FR\""
+   :cite/claim "The jurisdiction is France."}
+  {:cite/id "gleif-category"
+   :cite/authority :gleif
+   :cite/row-kind :attribute
+   :cite/url "https://api.gleif.org/api/v1/lei-records/96950032TUYMW11FB530"
+   :cite/expect-substring "\"category\":\"GENERAL\""
+   :cite/claim "The entity category is GENERAL -- an ordinary operating company, not a fund or branch."}
+  {:cite/id "gleif-registered-as"
+   :cite/authority :gleif
+   :cite/row-kind :register
+   :cite/url "https://api.gleif.org/api/v1/lei-records/96950032TUYMW11FB530"
+   :cite/expect-substring "\"registeredAs\":\"389058447\""
+   :cite/claim "The register-of-record number is 389058447 -- the SIREN. Corroborated independently by fr-siren."}
+  {:cite/id "gleif-registered-at"
+   :cite/authority :gleif
+   :cite/row-kind :register
+   :cite/url "https://api.gleif.org/api/v1/lei-records/96950032TUYMW11FB530"
+   :cite/expect-substring "\"registeredAt\":{\"id\":\"RA000189\""
+   :cite/claim "The register of record is RA000189 -- Sirene, resolved by rows gleif-ra-code, gleif-ra-name, gleif-ra-org."}
+  {:cite/id "gleif-legal-form"
+   :cite/authority :gleif
+   :cite/row-kind :attribute
+   :cite/url "https://api.gleif.org/api/v1/lei-records/96950032TUYMW11FB530"
+   :cite/expect-substring "\"legalForm\":{\"id\":\"K65D\""
+   :cite/claim "The legal form is ELF K65D, resolved by rows gleif-elf-code, gleif-elf-name -- and matched, label for label, by INSEE's independent coding (row fr-legal-form; header wrinkle 1)."}
+  {:cite/id "gleif-legal-address"
+   :cite/authority :gleif
+   :cite/row-kind :identity
+   :cite/url "https://api.gleif.org/api/v1/lei-records/96950032TUYMW11FB530"
+   :cite/expect-substring "\"addressLines\":[\"48 RUE ALBERT DHALENNE\"]"
+   :cite/claim "The legal address is 48 rue Albert Dhalenne. GLEIF prints the same line for the headquarters address; the state API prints the same street for the siege (row fr-siege-addr)."}
+  {:cite/id "gleif-city"
+   :cite/authority :gleif
+   :cite/row-kind :identity
+   :cite/url "https://api.gleif.org/api/v1/lei-records/96950032TUYMW11FB530"
+   :cite/expect-substring "\"city\":\"SAINT-OUEN-SUR-SEINE\""
+   :cite/claim "The city is Saint-Ouen-sur-Seine. Corroborated by fr-siege-commune and by the issuer's own legal notice (row issuer-city)."}
+  {:cite/id "gleif-postal"
+   :cite/authority :gleif
+   :cite/row-kind :identity
+   :cite/url "https://api.gleif.org/api/v1/lei-records/96950032TUYMW11FB530"
+   :cite/expect-substring "\"postalCode\":\"93400\""
+   :cite/claim "The postal code is 93400."}
+  {:cite/id "gleif-creation-date"
+   :cite/authority :gleif
+   :cite/row-kind :history
+   :cite/url "https://api.gleif.org/api/v1/lei-records/96950032TUYMW11FB530"
+   :cite/expect-substring "\"creationDate\":\"1992-10-28T23:00:00Z\""
+   :cite/claim "The entity was created 1992-10-28T23:00:00Z -- Paris midnight of 1992-10-29, the exact date INSEE prints (row fr-created; header wrinkle 2)."}
+  {:cite/id "gleif-registration-status"
+   :cite/authority :gleif
+   :cite/row-kind :status
+   :cite/url "https://api.gleif.org/api/v1/lei-records/96950032TUYMW11FB530"
+   :cite/expect-substring "\"status\":\"ISSUED\""
+   :cite/claim "The LEI registration itself is ISSUED (a lapsed LEI would print LAPSED here while the entity row could still say ACTIVE)."}
+  {:cite/id "gleif-initial-registration"
+   :cite/authority :gleif
+   :cite/row-kind :history
+   :cite/url "https://api.gleif.org/api/v1/lei-records/96950032TUYMW11FB530"
+   :cite/expect-substring "\"initialRegistrationDate\":\"2014-02-05T23:00:00Z\""
+   :cite/claim "The LEI was first registered 2014-02-05/06 -- the LEI system's own start, two decades after the entity's 1992 creation."}
+  {:cite/id "gleif-corroboration"
+   :cite/authority :gleif
+   :cite/row-kind :status
+   :cite/url "https://api.gleif.org/api/v1/lei-records/96950032TUYMW11FB530"
+   :cite/expect-substring "\"corroborationLevel\":\"FULLY_CORROBORATED\""
+   :cite/claim "GLEIF states the record is FULLY_CORROBORATED against the register of record."}
+  {:cite/id "gleif-validated-as"
+   :cite/authority :gleif
+   :cite/row-kind :register
+   :cite/url "https://api.gleif.org/api/v1/lei-records/96950032TUYMW11FB530"
+   :cite/expect-substring "\"validatedAs\":\"389058447\""
+   :cite/claim "The validation authority's number for the entity is the same SIREN 389058447 -- GLEIF's second print of the number."}
+  {:cite/id "gleif-managing-lou"
+   :cite/authority :gleif
+   :cite/row-kind :attribute
+   :cite/url "https://api.gleif.org/api/v1/lei-records/96950032TUYMW11FB530"
+   :cite/expect-substring "\"managingLou\":\"969500Q2MA9VBQ8BG884\""
+   :cite/claim "The managing LOU is 969500Q2MA9VBQ8BG884 (INSEE's own LEI-issuer record)."}
+  {:cite/id "gleif-ocid"
+   :cite/authority :gleif
+   :cite/row-kind :register
+   :cite/url "https://api.gleif.org/api/v1/lei-records/96950032TUYMW11FB530"
+   :cite/expect-substring "\"ocid\":\"fr\\/389058447\""
+   :cite/claim "The OpenCorporates id embeds the same SIREN -- GLEIF's third print of the number. Raw escaped form (fr\\/) matched deliberately."}
+  {:cite/id "gleif-conformity"
+   :cite/authority :gleif
+   :cite/row-kind :status
+   :cite/url "https://api.gleif.org/api/v1/lei-records/96950032TUYMW11FB530"
+   :cite/expect-substring "\"conformityFlag\":\"CONFORMING\""
+   :cite/claim "The record's conformity flag is CONFORMING."}
+  ;; ── GLEIF: the ELF code, resolved ────────────────────────────────────────
+  {:cite/id "gleif-elf-code"
+   :cite/authority :gleif
+   :cite/row-kind :definition
+   :cite/url "https://api.gleif.org/api/v1/entity-legal-forms/K65D"
+   :cite/expect-substring "\"code\":\"K65D\""
+   :cite/claim "K65D is a registered ELF code."}
+  {:cite/id "gleif-elf-name"
+   :cite/authority :gleif
+   :cite/row-kind :definition
+   :cite/url "https://api.gleif.org/api/v1/entity-legal-forms/K65D"
+   :cite/expect-substring "conseil d'administration (s.a.i.)"
+   :cite/claim "K65D's local name is SA a conseil d'administration (s.a.i.) -- a French societe anonyme with a board of directors. The accented a arrives as a \\u escape in the raw body, so the row matches the ASCII remainder of the label. INSEE's nature_juridique 5599 carries the identical label (row fr-legal-form)."}
+  {:cite/id "gleif-elf-country"
+   :cite/authority :gleif
+   :cite/row-kind :definition
+   :cite/url "https://api.gleif.org/api/v1/entity-legal-forms/K65D"
+   :cite/expect-substring "\"countryCode\":\"FR\""
+   :cite/claim "K65D is a French legal form -- consistent with row gleif-jurisdiction."}
+  ;; ── GLEIF: the registration authority, resolved ──────────────────────────
+  {:cite/id "gleif-ra-code"
+   :cite/authority :gleif
+   :cite/row-kind :definition
+   :cite/url "https://api.gleif.org/api/v1/registration-authorities/RA000189"
+   :cite/expect-substring "\"code\":\"RA000189\""
+   :cite/claim "RA000189 is a registered registration authority."}
+  {:cite/id "gleif-ra-name"
+   :cite/authority :gleif
+   :cite/row-kind :definition
+   :cite/url "https://api.gleif.org/api/v1/registration-authorities/RA000189"
+   :cite/expect-substring "\"internationalName\":\"Register of Companies (Sirene)\""
+   :cite/claim "RA000189 is Sirene, the French Register of Companies."}
+  {:cite/id "gleif-ra-org"
+   :cite/authority :gleif
+   :cite/row-kind :definition
+   :cite/url "https://api.gleif.org/api/v1/registration-authorities/RA000189"
+   :cite/expect-substring "\"internationalOrganizationName\":\"National Institute of Statistics and Economic Studies\""
+   :cite/claim "Sirene is operated by INSEE, the National Institute of Statistics and Economic Studies -- the same state body whose API the fr-* rows cite. The registers agree because one feeds the other; the INDEPENDENT corroboration is GLEIF vs Euronext vs the issuer."}
+  ;; ── The French state: recherche-entreprises.api.gouv.fr ──────────────────
+  {:cite/id "fr-siren"
+   :cite/authority :fr-state
+   :cite/row-kind :register
+   :cite/url "https://recherche-entreprises.api.gouv.fr/search?q=389058447"
+   :cite/expect-substring "\"siren\":\"389058447\""
+   :cite/claim "The state's own API answers for SIREN 389058447 -- the number GLEIF prints three times."}
+  {:cite/id "fr-name"
+   :cite/authority :fr-state
+   :cite/row-kind :identity
+   :cite/url "https://recherche-entreprises.api.gouv.fr/search?q=389058447"
+   :cite/expect-substring "\"nom_complet\":\"ALSTOM\""
+   :cite/claim "INSEE prints the full name as ALSTOM -- the name alone, matching gleif-legal-name (header wrinkle 1)."}
+  {:cite/id "fr-legal-form"
+   :cite/authority :fr-state
+   :cite/row-kind :attribute
+   :cite/url "https://recherche-entreprises.api.gouv.fr/search?q=389058447"
+   :cite/expect-substring "\"nature_juridique\":\"5599\""
+   :cite/claim "INSEE codes the legal form 5599 -- SA a conseil d'administration (s.a.i.), the identical label GLEIF's K65D resolves to (rows gleif-legal-form, gleif-elf-name). Two coding systems, one label."}
+  {:cite/id "fr-active"
+   :cite/authority :fr-state
+   :cite/row-kind :status
+   :cite/url "https://recherche-entreprises.api.gouv.fr/search?q=389058447"
+   :cite/expect-substring "\"etat_administratif\":\"A\""
+   :cite/claim "The administrative state is A (active) -- corroborating gleif-status."}
+  {:cite/id "fr-created"
+   :cite/authority :fr-state
+   :cite/row-kind :history
+   :cite/url "https://recherche-entreprises.api.gouv.fr/search?q=389058447"
+   :cite/expect-substring "\"date_creation\":\"1992-10-29\""
+   :cite/claim "The company's creation date is 1992-10-29 -- the Paris-local date of GLEIF's 1992-10-28T23:00:00Z (header wrinkle 2). The same response also prints an establishment-level date_creation 2015-11-04 for the siege; header wrinkle 4 keeps the two apart."}
+  {:cite/id "fr-naf"
+   :cite/authority :fr-state
+   :cite/row-kind :attribute
+   :cite/url "https://recherche-entreprises.api.gouv.fr/search?q=389058447"
+   :cite/expect-substring "\"activite_principale\":\"70.10Z\""
+   :cite/claim "The principal activity is NAF 70.10Z -- activites des sieges sociaux (head-office activities): the listed entity is the group's head, not the operating railway manufacturer."}
+  {:cite/id "fr-size"
+   :cite/authority :fr-state
+   :cite/row-kind :attribute
+   :cite/url "https://recherche-entreprises.api.gouv.fr/search?q=389058447"
+   :cite/expect-substring "\"categorie_entreprise\":\"GE\""
+   :cite/claim "INSEE classes the enterprise GE -- grande entreprise."}
+  {:cite/id "fr-siege-siret"
+   :cite/authority :fr-state
+   :cite/row-kind :register
+   :cite/url "https://recherche-entreprises.api.gouv.fr/search?q=389058447"
+   :cite/expect-substring "\"siret\":\"38905844700050\""
+   :cite/claim "The head-office establishment's SIRET is 38905844700050 -- the SIREN plus the 00050 establishment suffix."}
+  {:cite/id "fr-siege-addr"
+   :cite/authority :fr-state
+   :cite/row-kind :identity
+   :cite/url "https://recherche-entreprises.api.gouv.fr/search?q=389058447"
+   :cite/expect-substring "\"adresse\":\"48 RUE ALBERT DHALENNE 93400 SAINT-OUEN-SUR-SEINE\""
+   :cite/claim "The siege address is 48 rue Albert Dhalenne, 93400 Saint-Ouen-sur-Seine -- the same line GLEIF prints (row gleif-legal-address) and the issuer publishes (row issuer-address)."}
+  {:cite/id "fr-siege-commune"
+   :cite/authority :fr-state
+   :cite/row-kind :identity
+   :cite/url "https://recherche-entreprises.api.gouv.fr/search?q=389058447"
+   :cite/expect-substring "\"libelle_commune\":\"SAINT-OUEN-SUR-SEINE\""
+   :cite/claim "The commune is Saint-Ouen-sur-Seine."}
+  ;; ── Euronext: the listing venue ──────────────────────────────────────────
+  {:cite/id "euronext-isin"
+   :cite/authority :euronext
+   :cite/row-kind :listing
+   :cite/url "https://live.euronext.com/en/product/equities/FR0010220475-XPAR"
+   :cite/expect-substring "FR0010220475"
+   :cite/claim "Euronext serves a product page for ISIN FR0010220475 -- the ALSTOM ordinary share."}
+  {:cite/id "euronext-name"
+   :cite/authority :euronext
+   :cite/row-kind :listing
+   :cite/url "https://live.euronext.com/en/product/equities/FR0010220475-XPAR"
+   :cite/expect-substring "ALSTOM Common Stock"
+   :cite/claim "The venue names the instrument ALSTOM Common Stock."}
+  {:cite/id "euronext-market"
+   :cite/authority :euronext
+   :cite/row-kind :listing
+   :cite/url "https://live.euronext.com/en/product/equities/FR0010220475-XPAR"
+   :cite/expect-substring "Euronext Paris"
+   :cite/claim "The instrument trades on Euronext Paris (MIC XPAR, in the URL). Prices, volumes and headlines on this page churn and are deliberately not cited (header wrinkle 5)."}
+  ;; ── The issuer, at its own website ───────────────────────────────────────
+  {:cite/id "issuer-legal-notice-reachable"
+   :cite/authority :issuer
+   :cite/row-kind :self-reported
+   :cite/url "https://www.alstom.com/legal-notice"
+   :cite/expect-substring "Legal Notice"
+   :cite/claim "The issuer publishes a legal-notice page -- the same URL archived in 80-data/public/tos.journal.edn."}
+  {:cite/id "issuer-portal-owner"
+   :cite/authority :issuer
+   :cite/row-kind :self-reported
+   :cite/url "https://www.alstom.com/legal-notice"
+   :cite/expect-substring "ALSTOM Holdings"
+   :cite/claim "The page names ALSTOM Holdings as the portal's owner -- a DIFFERENT legal entity from the listed ALSTOM this repository archives (header wrinkle 3)."}
+  {:cite/id "issuer-holdings-rcs"
+   :cite/authority :issuer
+   :cite/row-kind :self-reported
+   :cite/url "https://www.alstom.com/legal-notice"
+   :cite/expect-substring "347 951 238"
+   :cite/claim "The page prints ALSTOM Holdings' own register number, RCS Bobigny 347 951 238 -- visibly distinct from this entity's SIREN 389058447 (header wrinkle 3)."}
+  {:cite/id "issuer-address"
+   :cite/authority :issuer
+   :cite/row-kind :self-reported
+   :cite/url "https://www.alstom.com/legal-notice"
+   :cite/expect-substring "48 rue Albert Dhalenne"
+   :cite/claim "The issuer publishes the registered address 48 rue Albert Dhalenne -- the same street GLEIF and INSEE print in uppercase (rows gleif-legal-address, fr-siege-addr)."}
+  {:cite/id "issuer-city"
+   :cite/authority :issuer
+   :cite/row-kind :self-reported
+   :cite/url "https://www.alstom.com/legal-notice"
+   :cite/expect-substring "Saint-Ouen-sur-Seine"
+   :cite/claim "The issuer places itself in Saint-Ouen-sur-Seine -- corroborating gleif-city and fr-siege-commune."}
+  {:cite/id "issuer-law"
+   :cite/authority :issuer
+   :cite/row-kind :self-reported
+   :cite/url "https://www.alstom.com/legal-notice"
+   :cite/expect-substring "French law"
+   :cite/claim "The notice declares itself governed by French law -- consistent with jurisdiction FR (row gleif-jurisdiction)."}
+  {:cite/id "issuer-site-reachable"
+   :cite/authority :issuer
+   :cite/row-kind :self-reported
+   :cite/url "https://www.alstom.com"
+   :cite/expect-substring "Alstom"
+   :cite/claim "The issuer's website answers at the domain recorded in blueprint.edn."}]}
